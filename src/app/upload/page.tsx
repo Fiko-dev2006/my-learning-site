@@ -1,66 +1,89 @@
-const handleUpload = async () => {
-  if (!file) return setMsg('Choose a file first')
-  setUploading(true)
+'use client'
 
-  const user = (await supabase.auth.getUser()).data.user
-  if (!user) return setMsg('Please log in')
+import { useState } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import QrCodeReader from 'qrcode-reader'
 
-  // Read QR from image
-  const reader = new FileReader()
-  reader.onload = async (e) => {
-    const img = new Image()
-   img.src = e.target?.result as string
-   img.onload = async () => {
-      const qr = new QrCodeReader()
-     qr.callback = async (err, value) => {
-       if (err) {
-         setMsg('Failed to read QR code')
-         return setUploading(false)
-       }
-       if (!value) {
-         setMsg('No QR code found')
-         return setUploading(false)
-       }
+export default function UploadPage() {
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [msg, setMsg] = useState('')
 
-       // Basic forgery check (example: check if QR data contains expected fields)
-       const isValidQrData = value.result.includes('expected_field')
-       if (!isValidQrData) {
-         setMsg('Invalid QR data')
-         return setUploading(false)
-       }
+  const handleUpload = async () => {
+    if (!file) return setMsg('Choose a file first')
+    setUploading(true)
 
-       // Check for duplication
-       const { data: existingData, error: existingError } = await supabase
-         .from('payments')
-         .select('id')
-         .eq('qr_data', value.result)
-         .single()
+    const user = (await supabase.auth.getUser()).data.user
+    if (!user) return setMsg('Please log in')
 
-       if (existingError || existingData) {
-         setMsg('Duplicate payment detected')
-         return setUploading(false)
-       }
+    // Check for existing file
+    const { data: existingFiles, error: checkError } = await supabase.storage.from('receipts').list('*', { limit: 1000 })
+    if (checkError) {
+      setMsg(checkError.message)
+      setUploading(false)
+      return
+    }
+    const existingFileNames = existingFiles?.map(f => f.name) || []
 
-       // Mark as paid
-       await supabase.from('payments').insert({
-         user_id: user.id,
-         file_name: file.name,
-         qr_data: value.result,
-         confirmed_by_admin: true // Automatically confirm
-       })
-       setMsg('QR scanned & course unlocked!')
-     }
-     qr.decode(img)
+    // Prevent uploading duplicates
+    if (existingFileNames.includes(file.name)) {
+      setMsg('This receipt has already been uploaded.')
+      setUploading(false)
+      return
+    }
+
+    // Read QR from image
+    const reader = new FileReader()
+    reader.onload = async (e) => {
+      const img = new Image()
+     img.src = e.target?.result as string
+     img.onload = async () => {
+        const qr = new QrCodeReader()
+        qr.callback = async (err, value) => {
+          if (value) {
+            // QR found – mark as paid
+            await supabase.from('payments').insert({
+              user_id: user.id,
+              file_name: file.name,
+              qr_data: value.result
+            })
+            setMsg('QR scanned & course unlocked!')
+          } else {
+            // no QR – still allow upload
+            await supabase.from('payments').insert({
+              user_id: user.id,
+              file_name: file.name
+            })
+            setMsg('Receipt uploaded & course unlocked!')
+          }
+        }
+        qr.decode(img)
+      }
+    }
+    reader.readAsDataURL(file)
+
+    const fileName = `${user.id}-${Date.now()}.${file.name.split('.').pop()}`
+    const { error: storageError } = await supabase.storage.from('receipts').upload(fileName, file)
+
+    if (storageError) {
+      setMsg(storageError.message)
+    } else {
+      setUploading(false)
     }
   }
-  reader.readAsDataURL(file)
 
-  const fileName = `${user.id}-${Date.now()}.${file.name.split('.').pop()}`
-  const { error: storageError } = await supabase.storage.from('receipts').upload(fileName, file)
-
-  if (storageError) {
-    setMsg(storageError.message)
-  } else {
-    setUploading(false)
-  }
+  return (
+    <div style={{ padding: 40, fontFamily: 'Arial' }}>
+      <h1>Upload Payment Receipt</h1>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+      />
+      <button onClick={handleUpload} disabled={uploading} style={{ marginTop: 10 }}>
+        {uploading ? 'Uploading…' : 'Upload'}
+      </button>
+      <p style={{ marginTop: 10 }}>{msg}</p>
+    </div>
+  )
 }
