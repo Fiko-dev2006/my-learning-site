@@ -7,7 +7,7 @@ export default function Home() {
       <p><a href="/admin">Admin Receipts</a></p>
       <p><a href="/grade9-math">Grade 9 Math Course</a></p>
       <p><a href="/grade9-english">Grade 9 English Course</a></p>
-      <p><a href="/admin-confirm">Admin Confirm Payments</a></p>       
+      <p><a href="/admin-confirm">Admin Confirm Payments</a></p>
     </main>
   )
 }
