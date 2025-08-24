@@ -16,60 +16,21 @@ export default function UploadPage() {
     const user = (await supabase.auth.getUser()).data.user
     if (!user) return setMsg('Please log in')
 
-    // Check for existing file
-    const { data: existingFiles, error: checkError } = await supabase.storage.from('receipts').list('*', { limit: 1000 })
-    if (checkError) {
-      setMsg(checkError.message)
-      setUploading(false)
-      return
-    }
-    const existingFileNames = existingFiles?.map(f => f.name) || []
-
-    // Prevent uploading duplicates
-    if (existingFileNames.includes(file.name)) {
-      setMsg('This receipt has already been uploaded.')
-      setUploading(false)
-      return
-    }
-
-    // Read QR from image
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      const img = new Image()
-     img.src = e.target?.result as string
-     img.onload = async () => {
-        const qr = new QrCodeReader()
-        qr.callback = async (err, value) => {
-          if (value) {
-            // QR found – mark as paid
-            await supabase.from('payments').insert({
-              user_id: user.id,
-              file_name: file.name,
-              qr_data: value.result
-            })
-            setMsg('QR scanned & course unlocked!')
-          } else {
-            // no QR – still allow upload
-            await supabase.from('payments').insert({
-              user_id: user.id,
-              file_name: file.name
-            })
-            setMsg('Receipt uploaded & course unlocked!')
-          }
-        }
-        qr.decode(img)
-      }
-    }
-    reader.readAsDataURL(file)
-
     const fileName = `${user.id}-${Date.now()}.${file.name.split('.').pop()}`
-    const { error: storageError } = await supabase.storage.from('receipts').upload(fileName, file)
+    const { error: upError } = await supabase.storage.from('receipts').upload(fileName, file)
 
-    if (storageError) {
-      setMsg(storageError.message)
+    if (upError) {
+      setMsg(upError.message)
     } else {
-      setUploading(false)
+      // mark as paid
+      await supabase.from('payments').insert({
+        user_id: user.id,
+        file_name: fileName
+      })
+      setMsg('Receipt uploaded & course unlocked!')
     }
+
+    setUploading(false)
   }
 
   return (
