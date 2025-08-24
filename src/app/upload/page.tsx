@@ -17,19 +17,19 @@ export default function UploadPage() {
 
     const fileName = `${user.id}-${Date.now()}.${file.name.split('.').pop()}`
     try {
-     const { error } = await supabase.storage.from('receipts').upload(fileName, file)
-     if (error) {
-       setMsg(error.message)
-     } else {
-        setMsg('Receipt uploaded & course unlocked!')
-        await supabase.from('payments').insert({
-         user_id: user.id,
-         file_name: fileName
-        })
-     }
-   } catch (error) {
-     setMsg(error.message)
-   }
+      const { error } = await supabase.storage.from('receipts').upload(fileName, file)
+       if (error) {
+         setMsg(error.message)
+       } else {
+          setMsg('Receipt uploaded & course unlocked!')
+          await supabase.from('payments').insert({
+            user_id: user.id,
+            file_name: fileName
+          })
+        }
+    } catch (error) {
+      setMsg(error.message)
+    }
 
     setUploading(false)
   }
