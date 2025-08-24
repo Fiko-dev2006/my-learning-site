@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import QrCodeReader from 'qrcode-reader'
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null)
@@ -17,18 +16,20 @@ export default function UploadPage() {
     if (!user) return setMsg('Please log in')
 
     const fileName = `${user.id}-${Date.now()}.${file.name.split('.').pop()}`
-    const { error: upError } = await supabase.storage.from('receipts').upload(fileName, file)
-
-    if (upError) {
-      setMsg(upError.message)
-    } else {
-      // mark as paid
-      await supabase.from('payments').insert({
-        user_id: user.id,
-        file_name: fileName
-      })
-      setMsg('Receipt uploaded & course unlocked!')
-    }
+    try {
+     const { error } = await supabase.storage.from('receipts').upload(fileName, file)
+     if (error) {
+       setMsg(error.message)
+     } else {
+        setMsg('Receipt uploaded & course unlocked!')
+        await supabase.from('payments').insert({
+         user_id: user.id,
+         file_name: fileName
+        })
+     }
+   } catch (error) {
+     setMsg(error.message)
+   }
 
     setUploading(false)
   }
