@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useRouter } from 'next/navigation'
 
-export default function Grade9MathPage() {
+export default function Grade9EnglishPage() {
   const [paid, setPaid] = useState(false)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
