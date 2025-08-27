@@ -11,6 +11,7 @@ export default function Home() {
       <p><a href="/grade11-math">Grade 11 Math</a></p>
       <p><a href="/grade12-math">Grade 12 Math</a></p>
       <p><a href="/admin-confirm">Admin Confirm Payments</a></p>
+      <p><a href="/grade9-quiz">Grade 9 Math Quiz</a></p>
     </main>
   )
 }
